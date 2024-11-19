@@ -1,43 +1,52 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\ProductController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\StockEntryController;
 
-// Ruta predeterminada: Redirige a la página de inicio de sesión
+// Redirección inicial
 Route::get('/', function () {
-    return redirect()->route('login');
+    return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
 });
 
-// Ruta al dashboard, utiliza el DashboardController
+// Dashboard
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-// Rutas protegidas con middleware 'auth'
+// Rutas protegidas
 Route::middleware('auth')->group(function () {
-    // Rutas del perfil de usuario
+    // Perfil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Rutas de Inventario (CRUD)
-    Route::resource('products', ProductController::class);
-    Route::resource('suppliers', SupplierController::class);
-    Route::resource('categories', CategoryController::class);
+    // Inventario
+    Route::resource('products', ProductController::class, [
+        'as' => 'web' // Cambia el prefijo del nombre a "web"
+    ]);
+    Route::resource('suppliers', SupplierController::class, [
+        'as' => 'web' // Cambia el prefijo del nombre a "web"
+    ]);
+    Route::resource('categories', CategoryController::class, [
+        'as' => 'web' // Cambia el prefijo del nombre a "web"
+    ]);
 
+    // Gestión de usuarios
+    Route::resource('user_gestor', UserController::class, [
+        'as' => 'web' // Cambia el prefijo del nombre a "web"
+    ]);
 
-
-    // Gestion usuarios
-  
-    Route::resource('user_gestor', UserController::class);
-    
-
-
+    // Entrada de stock
+    Route::resource('stock_entries', StockEntryController::class, [
+        'as' => 'web' // Cambia el prefijo del nombre a "web"
+    ]);
 });
 
-require __DIR__.'/auth.php';
+// Autenticación
+require __DIR__ . '/auth.php';

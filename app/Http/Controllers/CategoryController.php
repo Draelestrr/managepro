@@ -7,26 +7,20 @@ use App\Models\Category;
 
 class CategoryController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct()
     {
-        $categories = Category::all();
-        return view('categories.index', compact('categories'));
+        $this->middleware('permission:view categories')->only(['index', 'show']);
+        $this->middleware('permission:create categories')->only(['store']);
+        $this->middleware('permission:edit categories')->only(['update']);
+        $this->middleware('permission:delete categories')->only(['destroy']);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function index(Request $request)
     {
-        return view('categories.create');
+        $categories = Category::paginate(10);
+        return response()->json($categories, 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -34,30 +28,16 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        Category::create($validated);
+        $category = Category::create($validated);
 
-        return redirect()->route('categories.index')->with('success', 'Categoría creada con éxito.');
+        return response()->json(['message' => 'Categoría creada con éxito', 'data' => $category], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Category $category)
     {
-        return view('categories.show', compact('category'));
+        return response()->json($category, 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Category $category)
-    {
-        return view('categories.edit', compact('category'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
@@ -67,18 +47,13 @@ class CategoryController extends Controller
 
         $category->update($validated);
 
-        return redirect()->route('categories.index')->with('success', 'Categoría actualizada con éxito.');
+        return response()->json(['message' => 'Categoría actualizada con éxito', 'data' => $category], 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Category $category)
     {
         $category->delete();
 
-        return redirect()->route('categories.index')->with('success', 'Categoría eliminada con éxito.');
+        return response()->json(['message' => 'Categoría eliminada con éxito'], 200);
     }
 }
-
-?>

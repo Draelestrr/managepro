@@ -5,29 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
     /**
-     * Display a listing of the users.
+     * Listar usuarios con sus roles.
      */
     public function index()
     {
-        $users = User::all();
-        return view('user_gestor.index', compact('users'));
+        $users = User::with('roles')->paginate(10);
+        return response()->json($users, 200);
     }
 
     /**
-     * Show the form for creating a new user.
-     */
-    public function create()
-    {
-        return view('user_gestor.create');
-    }
-
-    /**
-     * Store a newly created user in storage.
+     * Crear un nuevo usuario con rol.
      */
     public function store(Request $request)
     {
@@ -35,61 +27,39 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users|max:255',
             'password' => 'required|string|min:8|confirmed',
-        ], [
-            'name.required' => 'El campo nombre es obligatorio.',
-            'email.required' => 'El campo correo electrónico es obligatorio.',
-            'email.email' => 'Debe proporcionar un correo electrónico válido.',
-            'email.unique' => 'Este correo electrónico ya está registrado.',
-            'password.required' => 'El campo contraseña es obligatorio.',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'role' => 'required|exists:roles,name',
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
 
-        return redirect()->route('user_gestor.index')->with('success', 'Usuario creado con éxito.');
+        $user->assignRole($validated['role']); // Asignar el rol
+
+        return response()->json(['message' => 'Usuario creado con éxito', 'data' => $user], 201);
     }
 
     /**
-     * Display the specified user.
+     * Mostrar detalles de un usuario.
      */
-    public function show($id)
+    public function show(User $user)
     {
-        $user = User::findOrFail($id);
-        return view('user_gestor.show', compact('user'));
+        $user->load('roles');
+        return response()->json($user, 200);
     }
 
     /**
-     * Show the form for editing the specified user.
+     * Actualizar un usuario y su rol.
      */
-    public function edit($id)
+    public function update(Request $request, User $user)
     {
-        $user = User::findOrFail($id);
-        return view('user_gestor.edit', compact('user'));
-    }
-
-    /**
-     * Update the specified user in storage.
-     */
-    public function update(Request $request, $id)
-    {
-        $user = User::findOrFail($id);
-
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id . '|max:255',
             'password' => 'nullable|string|min:8|confirmed',
-        ], [
-            'name.required' => 'El campo nombre es obligatorio.',
-            'email.required' => 'El campo correo electrónico es obligatorio.',
-            'email.email' => 'Debe proporcionar un correo electrónico válido.',
-            'email.unique' => 'Este correo electrónico ya está registrado.',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'role' => 'required|exists:roles,name',
         ]);
 
         $user->update([
@@ -98,16 +68,17 @@ class UserController extends Controller
             'password' => $validated['password'] ? Hash::make($validated['password']) : $user->password,
         ]);
 
-        return redirect()->route('user_gestor.index')->with('success', 'Usuario actualizado con éxito.');
+        $user->syncRoles([$validated['role']]); // Sincronizar roles (elimina los existentes y agrega el nuevo)
+
+        return response()->json(['message' => 'Usuario actualizado con éxito', 'data' => $user], 200);
     }
 
     /**
-     * Remove the specified user from storage.
+     * Eliminar un usuario.
      */
-    public function destroy($id)
+    public function destroy(User $user)
     {
-        $user = User::findOrFail($id);
         $user->delete();
-        return redirect()->route('user_gestor.index')->with('success', 'Usuario eliminado con éxito.');
+        return response()->json(['message' => 'Usuario eliminado con éxito'], 200);
     }
 }

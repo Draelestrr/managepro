@@ -7,26 +7,20 @@ use App\Models\Supplier;
 
 class SupplierController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct()
+    {
+        $this->middleware('permission:view suppliers')->only(['index', 'show']);
+        $this->middleware('permission:create suppliers')->only(['store']);
+        $this->middleware('permission:edit suppliers')->only(['update']);
+        $this->middleware('permission:delete suppliers')->only(['destroy']);
+    }
+
     public function index()
     {
-        $suppliers = Supplier::all();
-        return view('suppliers.index', compact('suppliers'));
+        $suppliers = Supplier::paginate(10);
+        return response()->json($suppliers, 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return view('suppliers.create');
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -37,30 +31,16 @@ class SupplierController extends Controller
             'address' => 'nullable|string|max:255',
         ]);
 
-        Supplier::create($validated);
+        $supplier = Supplier::create($validated);
 
-        return redirect()->route('suppliers.index')->with('success', 'Proveedor creado con éxito.');
+        return response()->json(['message' => 'Proveedor creado con éxito', 'data' => $supplier], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Supplier $supplier)
     {
-        return view('suppliers.show', compact('supplier'));
+        return response()->json($supplier, 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Supplier $supplier)
-    {
-        return view('suppliers.edit', compact('supplier'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Supplier $supplier)
     {
         $validated = $request->validate([
@@ -73,18 +53,13 @@ class SupplierController extends Controller
 
         $supplier->update($validated);
 
-        return redirect()->route('suppliers.index')->with('success', 'Proveedor actualizado con éxito.');
+        return response()->json(['message' => 'Proveedor actualizado con éxito', 'data' => $supplier], 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Supplier $supplier)
     {
         $supplier->delete();
 
-        return redirect()->route('suppliers.index')->with('success', 'Proveedor eliminado con éxito.');
+        return response()->json(['message' => 'Proveedor eliminado con éxito'], 200);
     }
 }
-
-?>

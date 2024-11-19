@@ -4,33 +4,28 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
-use App\Models\Category;
-use App\Models\Supplier;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct()
     {
-        $products = Product::all();
-        return view('products.index', compact('products'));
+        $this->middleware('permission:view products')->only(['index', 'show']);
+        $this->middleware('permission:create products')->only(['store']);
+        $this->middleware('permission:edit products')->only(['update']);
+        $this->middleware('permission:delete products')->only(['destroy']);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function index(Request $request)
     {
-        $categories = Category::all();
-        $suppliers = Supplier::all();
-        return view('products.create', compact('categories', 'suppliers'));
+        $filters = $request->only(['name', 'category']);
+        $products = Product::with('category', 'supplier')
+            ->when($filters['name'] ?? null, fn($query, $name) => $query->where('name', 'like', '%' . $name . '%'))
+            ->when($filters['category'] ?? null, fn($query, $category) => $query->whereHas('category', fn($q) => $q->where('name', 'like', '%' . $category . '%')))
+            ->paginate(10);
+
+        return response()->json($products, 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -42,32 +37,16 @@ class ProductController extends Controller
             'stock_min' => 'required|integer|min:0',
         ]);
 
-        Product::create($validated);
+        $product = Product::create($validated);
 
-        return redirect()->route('products.index')->with('success', 'Producto creado con éxito.');
+        return response()->json(['message' => 'Producto creado con éxito', 'data' => $product], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Product $product)
     {
-        return view('products.show', compact('product'));
+        return response()->json($product->load('category', 'supplier'), 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Product $product)
-    {
-        $categories = Category::all();
-        $suppliers = Supplier::all();
-        return view('products.edit', compact('product', 'categories', 'suppliers'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
@@ -81,18 +60,13 @@ class ProductController extends Controller
 
         $product->update($validated);
 
-        return redirect()->route('products.index')->with('success', 'Producto actualizado con éxito.');
+        return response()->json(['message' => 'Producto actualizado con éxito', 'data' => $product], 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Product $product)
     {
         $product->delete();
 
-        return redirect()->route('products.index')->with('success', 'Producto eliminado con éxito.');
+        return response()->json(['message' => 'Producto eliminado con éxito'], 200);
     }
 }
-
-?>
